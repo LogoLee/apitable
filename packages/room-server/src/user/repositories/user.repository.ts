@@ -36,7 +36,7 @@ export class UserRepository extends Repository<UserEntity> {
    */
   selectUserBaseInfoById(userId: string): Promise<UserEntity | undefined> {
     return this.findOne({
-      select: ['id', 'uuid', 'nikeName', 'avatar', 'locale'],
+      select: ['id', 'uuid', 'nikeName', 'avatar', 'locale','remark'],
       where: [{ id: userId, isDeleted: false }],
     });
   }

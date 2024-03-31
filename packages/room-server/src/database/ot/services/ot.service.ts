@@ -59,7 +59,7 @@ import { NodeShareSettingService } from 'node/services/node.share.setting.servic
 import { EnvConfigKey } from 'shared/common';
 import { InjectLogger } from 'shared/common/decorators';
 import { SourceTypeEnum } from 'shared/enums/changeset.source.type.enum';
-import { OtException, ServerException } from 'shared/exception';
+import { OtException, ServerException, CommonException } from 'shared/exception';
 import { RedisLock } from 'shared/helpers/redis.lock';
 import { IServerConfig } from 'shared/interfaces';
 import { IAuthHeader, NodePermission } from 'shared/interfaces/axios.interfaces';
@@ -235,6 +235,10 @@ export class OtService {
     if (message.shareId) {
       await this.nodeShareSettingService.checkNodeShareCanBeEdited(message.shareId, message.roomId);
     }
+    // if('' == message.changesets[0].operations[0].cmd || '' == message.changesets[0].operations[0].cmd){
+    //   throw new ServerException(CommonException.NODE_SHARE_NO_ALLOW_EDIT);
+    // }
+    
     const spaceId = await this.resourceService.getSpaceIdByResourceId(message.roomId);
 
     const msgIds = message.changesets.map(cs => cs.messageId);
@@ -256,6 +260,14 @@ export class OtService {
       const transactions: IChangesetParseResult[] = [];
       for (const cs of message.changesets) {
         const { transaction, effectMap, commonData, resultSet } = await this.parseChanges(spaceId, message, cs, auth);
+        if('AddFields' == cs?.operations[0]?.cmd || 'DeleteField' == cs?.operations[0]?.cmd){
+          const me = await this.userService.getMe(auth);
+          const userInfo = await this.userService.selectUserBaseInfoById(me.userId);
+          if(!('manager' == userInfo?.remark)){
+            throw new ServerException(CommonException.NODE_SHARE_NO_ALLOW_EDIT);
+          }
+        }
+        
         if (!context.operatorUserId && commonData.userId) {
           context.operatorUserId = commonData.userId;
         }
